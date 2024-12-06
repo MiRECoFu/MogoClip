@@ -1,5 +1,5 @@
 import torch.nn as nn
-from models.vq.resnet import Resnet1D
+from motion_vae.resnet import Resnet1D
 
 
 class Encoder(nn.Module):

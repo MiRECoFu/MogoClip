@@ -6,8 +6,8 @@ change output_emb_width and code_dim from 512 to 512 to fit bert token embedding
 import random
 
 import torch.nn as nn
-from models.vq.encdec import Encoder, Decoder
-from models.vq.residual_vq import ResidualVQ
+from motion_vae.encdec import Encoder, Decoder
+from motion_vae.residual_vq import ResidualVQ
     
 class RVQVAE(nn.Module):
     def __init__(self,

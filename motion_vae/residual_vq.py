@@ -8,7 +8,7 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 # from vector_quantize_pytorch.vector_quantize_pytorch import VectorQuantize
-from models.vq.quantizer import QuantizeEMAReset, QuantizeEMA
+from motion_vae.quantizer import QuantizeEMAReset, QuantizeEMA
 
 from einops import rearrange, repeat, pack, unpack
 
