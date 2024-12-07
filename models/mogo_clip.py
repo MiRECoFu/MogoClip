@@ -5,7 +5,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import nn
-
+import clip
 
 class LayerNorm(nn.LayerNorm):
     """Subclass torch's LayerNorm to handle fp16."""
@@ -62,11 +62,16 @@ class MogoClip(nn.Module):
                  heads: int,
                  width: int,
                  codebook_size: int,
-                 max_motion_length: int
+                 max_motion_length: int,
+                 clip_version: str,
+                 device
                 ):
         super().__init__()
         
         self.max_motion_length = max_motion_length
+        self.clip_version = clip_version
+        self.device = device
+        
         self.transformer = Transformer(
             width=width,
             layers=layers,
@@ -81,6 +86,9 @@ class MogoClip(nn.Module):
         self.ln_final = LayerNorm(width)
         self.text_projection = nn.Parameter(torch.empty(width, embed_dim))
         self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / 0.07))
+        self.clip_model = self.load_and_freeze_clip()
+        
+        self.initialize_parameters()
 
     
     
@@ -101,6 +109,20 @@ class MogoClip(nn.Module):
         if self.text_projection is not None:
             nn.init.normal_(self.text_projection, std=self.transformer.width ** -0.5)
             
+    def load_and_freeze_clip(self):
+        clip_model, clip_preprocess = clip.load(self.clip_version, device=self.device,
+                                                jit=False)  # Must set jit=False for training
+        # Cannot run on cpu
+        clip.model.convert_weights(clip_model)  # Actually this line is unnecessary since clip by default already on float16
+        # Date 0707: It's necessary, only unecessary when load directly to gpu. Disable if need to run on cpu
+
+        # Freeze CLIP weights
+        clip_model.eval()
+        for p in clip_model.parameters():
+            p.requires_grad = False
+
+        return clip_model
+            
     
     def build_attention_mask(self):
         # pytorch uses additive attention mask; fill with -inf
@@ -117,9 +139,38 @@ class MogoClip(nn.Module):
         x = self.transformer(x)
         x = x.permute(1, 0, 2)  # LND -> NLD
         x = self.ln_final(x)
-        # x.shape = [batch_size, n_ctx, transformer.width]
-        # take features from the eot embedding (eot_token is the highest number in each sequence)
-        # x = x[torch.arange(x.shape[0]), text.argmax(dim=-1)] @ self.text_projection
         x = x.mean(dim=1) @ self.text_projection
 
         return x
+    
+    def encode_text(self, raw_text):
+        text = clip.tokenize(raw_text, truncate=True).to(self.device)
+        feat_clip_text = self.clip_model.encode_text(text)
+        return feat_clip_text
+    
+    
+    def mean_cosine_similarity(self, motion_code, raw_text):
+        text_features = self.encode_text(raw_text)
+        motion_features = self.encode_motion_code(motion_code).type(text_features.dtype)
+        motion_features = motion_features / motion_features.norm(dim=-1, keepdim=True)
+        text_features = text_features / text_features.norm(dim=-1, keepdim=True)
+        cosine_sim = torch.sum(motion_features * text_features, dim=-1)  # [batch_size]
+        return cosine_sim.mean().item()
+    
+    
+    def forward(self, motion_code, raw_text):
+        
+        text_features = self.encode_text(raw_text)
+        motion_features = self.encode_motion_code(motion_code).type(text_features.dtype)
+        
+        # normalized features
+        motion_features = motion_features / motion_features.norm(dim=1, keepdim=True)
+        text_features = text_features / text_features.norm(dim=1, keepdim=True)
+        # cosine similarity as logits
+        logit_scale = self.logit_scale.exp()
+        logits_per_motion = logit_scale * motion_features @ text_features.t()
+        logits_per_text = logits_per_motion.t()
+
+        # shape = [global_batch_size, global_batch_size]
+        return logits_per_motion, logits_per_text
+        

@@ -14,23 +14,8 @@ from utils.get_opt import get_opt
 from utils.paramUtil import t2m_kinematic_chain
 from data_process.motion_dataset import Text2MotionDataset
 from models.mogo_clip import MogoClip
-# from motion_loaders.dataset_motion_loader import get_dataset_motion_loader
+from models.trainer import Trainer
 
-
-def load_and_freeze_clip(clip_version):
-    clip_model, clip_preprocess = clip.load(clip_version, device='cuda',
-                                            jit=False)  # Must set jit=False for training
-    # Cannot run on cpu
-    clip.model.convert_weights(
-        clip_model)  # Actually this line is unnecessary since clip by default already on float16
-    # Date 0707: It's necessary, only unecessary when load directly to gpu. Disable if need to run on cpu
-
-    # Freeze CLIP weights
-    clip_model.eval()
-    for p in clip_model.parameters():
-        p.requires_grad = False
-
-    return clip_model
 
 def load_vq_model():
     opt_path = pjoin(opt.checkpoints_dir, opt.dataset_name, opt.vq_name, 'opt.txt')
@@ -54,6 +39,7 @@ def load_vq_model():
     print(f'Loading VQ Model {opt.vq_name}')
     return vq_model, vq_opt
 
+
 if __name__ == '__main__':
     parser = TrainT2MOptions()
     opt = parser.parse()
@@ -68,62 +54,36 @@ if __name__ == '__main__':
     kinematic_chain = t2m_kinematic_chain
     dataset_opt_path = '/root/autodl-tmp/checkpoints/t2m/Comp_v6_KLD005/opt.txt'
     clip_version = 'ViT-L/14'
-    # checkpoints_dir = '/root/autodl-tmp/checkpoints'
-    # dataset_name = 't2m'
-    # vq_name = 'rvq_n8192_d128'
     dim_pose = 263
-    clip_model = load_and_freeze_clip(clip_version)
-    
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # print(opt)
     vq_model, vq_opt = load_vq_model()
     vq_model.to("cuda")
     vq_model.eval()
+    print(vq_opt)
+    mogo_clip = MogoClip(
+        embed_dim=opt.embed_dim,
+        layers=opt.layers,
+        heads=opt.heads,
+        width=opt.width,
+        codebook_size=vq_opt.nb_code,
+        max_motion_length=opt.max_motion_length,
+        clip_version=clip_version,
+        device=device
+    )
+    
     mean = np.load(pjoin(opt.checkpoints_dir, opt.dataset_name, opt.vq_name, 'meta', 'mean.npy'))
     std = np.load(pjoin(opt.checkpoints_dir, opt.dataset_name, opt.vq_name, 'meta', 'std.npy'))
 
     train_split_file = pjoin(opt.data_root, 'train.txt')
     val_split_file = pjoin(opt.data_root, 'val.txt')
+    eval_split_file = pjoin(opt.data_root, 'test.txt')
 
     train_dataset = Text2MotionDataset(opt, mean, std, train_split_file)
     val_dataset = Text2MotionDataset(opt, mean, std, val_split_file)
-    print(f"Train dataset size: {len(train_dataset)}")
+    eval_dataset = Text2MotionDataset(opt, mean, std, eval_split_file)
     train_loader = DataLoader(train_dataset, batch_size=opt.batch_size, num_workers=4, shuffle=True, drop_last=True)
     val_loader = DataLoader(val_dataset, batch_size=opt.batch_size, num_workers=4, shuffle=True, drop_last=True)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    mogo_clip = MogoClip(
-        embed_dim=768,
-        layers=6,
-        heads=8,
-        width=1024,
-        codebook_size=8192,
-        max_motion_length=210,
-        clip_version='ViT-L/14',
-        device=device
-    )
-    mogo_clip = mogo_clip.to(device)
-    for i, batch_data in enumerate(train_loader):
-        captions, motions, m_lens = batch_data
-        # print(captions)
-        raw_text = captions
-        # motion = (motions[0])
-        motions = motions.detach().float().to(device)
-        # text = clip.tokenize(raw_text, truncate=True).to(device)
-        # # print(f"tokenized: {text} {text.shape}")
-        # feat_clip_text = clip_model.encode_text(text).float()
-        # print(f"embed: {feat_clip_text} {feat_clip_text.shape}")
-        code_idx, _motion_emb = vq_model.encode(motions)
-        # print(f"code_idx: {code_idx[0]}")
-        # print(f"code_idx: {code_idx[:, :, 0].shape}")
-        # encoded_motion = mogo_clip.encode_motion_code(code_idx[:, :, 0])
-        # feat_clip_text = mogo_clip.encode_text(raw_text)
-        # print(f"encoded_motion: {encoded_motion} \n shape: {encoded_motion.shape}")
-        # print(f"feat_clip_text: {feat_clip_text} \n shape: {feat_clip_text.shape}")
-        logits_per_motion, logits_per_text = mogo_clip(code_idx[:, :, 0], raw_text)
-        cosine_dit = mogo_clip.mean_cosine_similarity(code_idx[:, :, 0], raw_text)
-        print(f"logits_per_motion: {logits_per_motion} \n shape: {logits_per_motion.shape}")
-        print(f"logits_per_text: {logits_per_text} \n shape: {logits_per_text.shape}")
-        
-        print(f"cosine_dit: {cosine_dit}")
-        # print(m_lens)
-        if i == 1:
-            break
-    
+    eval_loader = DataLoader(eval_dataset, batch_size=opt.batch_size, num_workers=4, shuffle=True, drop_last=True)
+    trainer = Trainer(mogo_clip, vq_model, opt, device)
+    trainer.train(train_loader, val_loader, eval_loader)

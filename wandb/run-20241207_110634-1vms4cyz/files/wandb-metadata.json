@@ -1,0 +1,43 @@
+{
+  "os": "Linux-5.15.0-83-generic-x86_64-with-glibc2.35",
+  "python": "CPython 3.10.15",
+  "startedAt": "2024-12-07T03:06:34.433750Z",
+  "program": "/root/MogoClip/train.py",
+  "codePath": "train.py",
+  "git": {
+    "remote": "git@github.com:MiRECoFu/MogoClip.git",
+    "commit": "b2f8f514b5e8bf9cb7f8fde950e54c5bfdb092f3"
+  },
+  "email": "1027066037@qq.com",
+  "root": "/root/MogoClip",
+  "host": "autodl-container-5e96488cf6-e216a3b0",
+  "username": "root",
+  "executable": "/root/miniconda3/envs/MogoClip/bin/python",
+  "codePathLocal": "train.py",
+  "cpu_count": 64,
+  "cpu_count_logical": 128,
+  "gpu": "NVIDIA GeForce RTX 4090",
+  "gpu_count": 1,
+  "disk": {
+    "/": {
+      "total": "32212254720",
+      "used": "29252620288"
+    }
+  },
+  "memory": {
+    "total": "1081806553088"
+  },
+  "cpu": {
+    "count": 64,
+    "countLogical": 128
+  },
+  "gpu_nvidia": [
+    {
+      "name": "NVIDIA GeForce RTX 4090",
+      "memoryTotal": "25757220864",
+      "cudaCores": 16384,
+      "architecture": "Ada"
+    }
+  ],
+  "cudaVersion": "12.2"
+}
