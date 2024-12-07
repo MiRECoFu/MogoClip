@@ -144,7 +144,7 @@ class Trainer:
 
             print(f"Validation loss:{np.mean(val_loss):.3f}, pos_cosine_sim:{np.mean(val_positive_cosine_sim):.3f}, neg_cosine_sim:{np.mean(val_neg_cosine_sim):.3f}, cosine_sep:{np.mean(val_cosine_sep):.3f} ")
 
-            wandb.log({'Val/loss': np.mean(val_loss), 'Val/pos_cosine_sim': np.mean(pos_cosine_sim), 'Val/neg_cosine_sim': np.mean(val_neg_cosine_sim), 'Val/cosine_sep': np.mean(val_cosine_sep)})
+            wandb.log({'Val/loss': np.mean(val_loss), 'Val/pos_cosine_sim': np.mean(val_positive_cosine_sim), 'Val/neg_cosine_sim': np.mean(val_neg_cosine_sim), 'Val/cosine_sep': np.mean(val_cosine_sep)})
             
             best_eval_cosine = 0.
             
