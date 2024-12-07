@@ -85,7 +85,7 @@ class MogoClip(nn.Module):
         self.positional_embedding = nn.Parameter(torch.empty(self.max_motion_length, width))
         self.ln_final = LayerNorm(width)
         self.text_projection = nn.Parameter(torch.empty(width, embed_dim))
-        self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / 0.07))
+        self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / 0.1))
         self.clip_model = self.load_and_freeze_clip()
         
         self.initialize_parameters()

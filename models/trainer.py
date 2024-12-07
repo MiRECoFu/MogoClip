@@ -188,9 +188,9 @@ class Trainer:
                 print(f"Eval eval_cosine_pos:{np.mean(eval_cosine_pos):.3f}, Eval eval_cosine_neg:{np.mean(eval_cosine_neg):.3f}, Eval eval_cosine_sep:{np.mean(eval_cosine_sep):.3f} , R1:{np.mean(eval_r1):.3f}, R3:{np.mean(eval_r3):.3f}, R5:{np.mean(eval_r5):.3f}, R10:{np.mean(eval_r10):.3f}, MRR:{np.mean(eval_mrr):.3f}")
 
                 wandb.log({'Eval/eval_cosine_pos': np.mean(eval_cosine_pos), 'Eval/eval_cosine_neg': np.mean(eval_cosine_neg), 'Eval/eval_cosine_sep': np.mean(eval_cosine_sep), 'Eval/R1':np.mean(eval_r1),'Eval/R3':np.mean(eval_r3), 'Eval/R5':np.mean(eval_r5), 'Eval/R10': np.mean(eval_r10), 'Eval/MRR':np.mean(eval_mrr)})
-                if np.mean(eval_cosine) > best_eval_cosine:
+                if np.mean(eval_cosine_pos) > best_eval_cosine:
                     self.save(pjoin(self.opt.model_dir, 'best_eval_cosine.tar'), epoch, it)
-                    best_eval_cosine = np.mean(eval_cosine)
+                    best_eval_cosine = np.mean(eval_cosine_pos)
                 
                 
                 
