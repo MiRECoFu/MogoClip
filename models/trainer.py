@@ -148,7 +148,7 @@ class Trainer:
             
             best_eval_cosine = 0.
             
-            if epoch % 10 == 0 or epoch == 1:
+            if epoch % 5 == 0 or epoch == 1:
                 eval_cosine_pos = []
                 eval_cosine_neg = []
                 eval_cosine_sep = []

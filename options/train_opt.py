@@ -6,7 +6,7 @@ from options.base_opt import BaseOptions
 class TrainT2MOptions(BaseOptions):
     def initialize(self):
         BaseOptions.initialize(self)
-        self.parser.add_argument('--batch_size', type=int, default=60, help='Batch size')
+        self.parser.add_argument('--batch_size', type=int, default=64, help='Batch size')
         self.parser.add_argument('--max_epoch', type=int, default=3000, help='Maximum number of epoch for training')
         # self.parser.add_argument('--max_iters', type=int, default=150_000, help='Training iterations')
 

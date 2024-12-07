@@ -82,10 +82,11 @@ class MogoClip(nn.Module):
         
         self.codebook_size = codebook_size
         self.token_embedding = nn.Embedding(codebook_size, width)
+        self.clip_linear = nn.Linear(768, embed_dim)
         self.positional_embedding = nn.Parameter(torch.empty(self.max_motion_length, width))
         self.ln_final = LayerNorm(width)
         self.text_projection = nn.Parameter(torch.empty(width, embed_dim))
-        self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / 0.1))
+        self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / 0.2))
         self.clip_model = self.load_and_freeze_clip()
         
         self.initialize_parameters()
@@ -94,6 +95,7 @@ class MogoClip(nn.Module):
     
     def initialize_parameters(self):
         nn.init.normal_(self.token_embedding.weight, std=0.02)
+        nn.init.normal_(self.clip_linear.weight, std=0.02)
         nn.init.normal_(self.positional_embedding, std=0.01)
 
 
@@ -145,8 +147,9 @@ class MogoClip(nn.Module):
     
     def encode_text(self, raw_text):
         text = clip.tokenize(raw_text, truncate=True).to(self.device)
-        feat_clip_text = self.clip_model.encode_text(text)
-        return feat_clip_text
+        feat_clip_text = self.clip_model.encode_text(text).float()
+        text_embed = self.clip_linear(feat_clip_text)
+        return text_embed
     
     
     # def mean_cosine_similarity(self, motion_code, raw_text):
