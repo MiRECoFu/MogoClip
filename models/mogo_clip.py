@@ -149,13 +149,55 @@ class MogoClip(nn.Module):
         return feat_clip_text
     
     
+    # def mean_cosine_similarity(self, motion_code, raw_text):
+    #     text_features = self.encode_text(raw_text)
+    #     motion_features = self.encode_motion_code(motion_code).type(text_features.dtype)
+    #     motion_features = motion_features / motion_features.norm(dim=-1, keepdim=True)
+    #     text_features = text_features / text_features.norm(dim=-1, keepdim=True)
+    #     cosine_sim = torch.sum(motion_features * text_features, dim=-1)  # [batch_size]
+    #     return cosine_sim.mean().item()
+    
     def mean_cosine_similarity(self, motion_code, raw_text):
+        """
+        计算正样本对的平均余弦相似度，并监控正负样本的分离情况。
+        
+        Args:
+            motion_code (torch.Tensor): 动作特征编码。
+            raw_text (List[str]): 文本特征对应的描述。
+        
+        Returns:
+            dict: 包含正样本相似度均值、负样本相似度均值和两者差值。
+        """
+        # 编码特征
         text_features = self.encode_text(raw_text)
         motion_features = self.encode_motion_code(motion_code).type(text_features.dtype)
+
+        # 特征归一化
         motion_features = motion_features / motion_features.norm(dim=-1, keepdim=True)
         text_features = text_features / text_features.norm(dim=-1, keepdim=True)
-        cosine_sim = torch.sum(motion_features * text_features, dim=-1)  # [batch_size]
-        return cosine_sim.mean().item()
+
+        # 对角线（正样本对相似度）
+        cosine_sim_matrix = motion_features @ text_features.t()  # [batch_size, batch_size]
+        positive_sim = cosine_sim_matrix.diag()  # 正样本对
+        positive_mean = positive_sim.mean().item()
+
+        # 非对角线（负样本对相似度）
+        batch_size = cosine_sim_matrix.size(0)
+        mask = ~torch.eye(batch_size, dtype=torch.bool, device=cosine_sim_matrix.device)  # 非对角线 mask
+        negative_sim = cosine_sim_matrix[mask]  # 提取负样本
+        negative_mean = negative_sim.mean().item()
+
+        # 计算正负样本分离程度
+        separation = positive_mean - negative_mean
+
+        # 返回监控结果
+        return positive_mean, negative_mean, separation
+        # return {
+        #     "positive_mean": positive_mean,
+        #     "negative_mean": negative_mean,
+        #     "separation": separation
+        # }
+
     
     
     def forward(self, motion_code, raw_text):

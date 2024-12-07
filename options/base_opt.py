@@ -17,9 +17,9 @@ class BaseOptions():
         self.parser.add_argument('--checkpoints_dir', type=str, default='/root/autodl-tmp/checkpoints', help='models are saved here.')
 
         self.parser.add_argument('--embed_dim', type=int, default=768, help='Dimension of transformer latent.')
-        self.parser.add_argument('--heads', type=int, default=16, help='Number of heads.')
-        self.parser.add_argument('--layers', type=int, default=12, help='Number of attention layers.')
-        self.parser.add_argument('--width', type=int, default=1024, help='FF_Size')
+        self.parser.add_argument('--heads', type=int, default=8, help='Number of heads.')
+        self.parser.add_argument('--layers', type=int, default=6, help='Number of attention layers.')
+        self.parser.add_argument('--width', type=int, default=1536, help='FF_Size')
         self.parser.add_argument('--dropout', type=float, default=0.1, help='Dropout ratio in transformer')
 
         self.parser.add_argument("--max_motion_length", type=int, default=210, help="Max length of motion")

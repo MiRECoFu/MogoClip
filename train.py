@@ -48,6 +48,14 @@ if __name__ == '__main__':
     opt.joints_num = 22
     opt.max_motion_len = 55
     opt.text_dir = pjoin(opt.data_root, 'texts')
+    opt.save_root = pjoin(opt.checkpoints_dir, opt.dataset_name, opt.name)
+    opt.model_dir = pjoin(opt.save_root, 'model')
+    opt.eval_dir = pjoin(opt.save_root, 'animation')
+    opt.log_dir = pjoin('./log/t2m/', opt.dataset_name, opt.name)
+    os.makedirs(opt.model_dir, exist_ok=True)
+    # os.makedirs(opt.meta_dir, exist_ok=True)
+    os.makedirs(opt.eval_dir, exist_ok=True)
+    os.makedirs(opt.log_dir, exist_ok=True)
     dim_pose = 263
     radius = 4
     fps = 20

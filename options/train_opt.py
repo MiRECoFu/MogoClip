@@ -11,7 +11,7 @@ class TrainT2MOptions(BaseOptions):
         # self.parser.add_argument('--max_iters', type=int, default=150_000, help='Training iterations')
 
         '''LR scheduler'''
-        self.parser.add_argument('--lr', type=float, default=2e-4, help='Learning rate')
+        self.parser.add_argument('--lr', type=float, default=2.5e-4, help='Learning rate')
         self.parser.add_argument('--gamma', type=float, default=0.1, help='Learning rate schedule factor')
         self.parser.add_argument('--milestones', default=[50_000], nargs="+", type=int,
                             help="learning rate schedule (iterations)")
