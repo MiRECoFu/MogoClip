@@ -30,7 +30,8 @@ class ResidualAttentionBlock(nn.Module):
         self.mlp = nn.Sequential(OrderedDict([
             ("c_fc", nn.Linear(d_model, d_model * 4)),
             ("gelu", QuickGELU()),
-            ("c_proj", nn.Linear(d_model * 4, d_model))
+            ("c_proj", nn.Linear(d_model * 4, d_model)),
+            ("dropout", nn.Dropout(p=0.1))
         ]))
         self.ln_2 = LayerNorm(d_model)
         self.attn_mask = attn_mask
@@ -71,6 +72,7 @@ class MogoClip(nn.Module):
         self.max_motion_length = max_motion_length
         self.clip_version = clip_version
         self.device = device
+        self.embed_dim = embed_dim
         
         self.transformer = Transformer(
             width=width,
@@ -82,11 +84,27 @@ class MogoClip(nn.Module):
         
         self.codebook_size = codebook_size
         self.token_embedding = nn.Embedding(codebook_size, width)
-        self.clip_linear = nn.Linear(768, embed_dim)
+        # self.clip_mlp = nn.Sequential(OrderedDict([
+        #     ("c_fc", nn.Linear(embed_dim, embed_dim * 2)),
+        #     ("gelu", QuickGELU()),
+        #     ("c_proj", nn.Linear(embed_dim * 2, embed_dim)),
+        #     ("dropout", nn.Dropout(p=0.1))
+        # ]))
+        self.clip_mlp = nn.Sequential(OrderedDict([
+            ("c_fc1", nn.Linear(embed_dim, embed_dim * 2)),
+            ("gelu1", QuickGELU()),
+            ("c_fc2", nn.Linear(embed_dim * 2, embed_dim * 4)),  # 新增层
+            ("gelu2", QuickGELU()),                             # 新增激活函数
+            ("c_fc3", nn.Linear(embed_dim * 4, embed_dim * 2)), # 新增层
+            ("gelu3", QuickGELU()),                             # 新增激活函数
+            ("c_proj", nn.Linear(embed_dim * 2, embed_dim)),
+            ("dropout", nn.Dropout(p=0.1))
+        ]))
+        # self.clip_linear = nn.Linear(768, embed_dim)
         self.positional_embedding = nn.Parameter(torch.empty(self.max_motion_length, width))
         self.ln_final = LayerNorm(width)
         self.text_projection = nn.Parameter(torch.empty(width, embed_dim))
-        self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / 0.2))
+        self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / 0.1))
         self.clip_model = self.load_and_freeze_clip()
         
         self.initialize_parameters()
@@ -95,7 +113,11 @@ class MogoClip(nn.Module):
     
     def initialize_parameters(self):
         nn.init.normal_(self.token_embedding.weight, std=0.02)
-        nn.init.normal_(self.clip_linear.weight, std=0.02)
+        # nn.init.normal_(self.clip_mlp.c_fc.weight, std=(2 * self.embed_dim) ** -0.5)
+        nn.init.normal_(self.clip_mlp.c_fc1.weight, std=(2 * self.embed_dim) ** -0.5)
+        nn.init.normal_(self.clip_mlp.c_fc2.weight, std=(4 * self.embed_dim) ** -0.5)
+        nn.init.normal_(self.clip_mlp.c_fc3.weight, std=(2 * self.embed_dim) ** -0.5)
+        nn.init.normal_(self.clip_mlp.c_proj.weight, std=(2 * self.embed_dim) ** -0.5)
         nn.init.normal_(self.positional_embedding, std=0.01)
 
 
@@ -148,7 +170,7 @@ class MogoClip(nn.Module):
     def encode_text(self, raw_text):
         text = clip.tokenize(raw_text, truncate=True).to(self.device)
         feat_clip_text = self.clip_model.encode_text(text).float()
-        text_embed = self.clip_linear(feat_clip_text)
+        text_embed = self.clip_mlp(feat_clip_text)
         return text_embed
     
     

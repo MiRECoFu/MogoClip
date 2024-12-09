@@ -96,8 +96,9 @@ class Trainer:
         self.mogo_clip.to(self.device)
         self.vq_model.to(self.device)
         
-        self.opt_mogo_clip = optim.AdamW(self.mogo_clip.parameters(), lr=self.lr, weight_decay=0.01)
-        self.scheduler = optim.lr_scheduler.CosineAnnealingLR(self.opt_mogo_clip, 800000, eta_min=3e-6)
+        self.opt_mogo_clip = optim.AdamW(self.mogo_clip.parameters(), lr=self.lr, weight_decay=0.05)
+        
+        self.scheduler = optim.lr_scheduler.CosineAnnealingLR(self.opt_mogo_clip, 25000, eta_min=1e-6)
         epoch = 0
         it = 0
         if self.opt.is_continue:
@@ -119,6 +120,7 @@ class Trainer:
                 it += 1
                 loss, positive_mean, negative_mean, separation = self.update(batch_data=batch)
                 wandb.log({"Train/lr": self.opt_mogo_clip.param_groups[0]['lr']})
+                wandb.log({"Train/logit_scale": self.mogo_clip.logit_scale.exp().item()})
                 if it % self.opt.log_every == 0:
                     print_current_loss(start_time, it, total_iters, loss, positive_mean, negative_mean, separation, epoch=epoch, inner_iter=i)
                 
@@ -147,8 +149,9 @@ class Trainer:
             wandb.log({'Val/loss': np.mean(val_loss), 'Val/pos_cosine_sim': np.mean(val_positive_cosine_sim), 'Val/neg_cosine_sim': np.mean(val_neg_cosine_sim), 'Val/cosine_sep': np.mean(val_cosine_sep)})
             
             best_eval_cosine = 0.
+            best_R1 = 0.
             
-            if epoch % 5 == 0 or epoch == 1:
+            if epoch % 3 == 0 or epoch == 1:
                 eval_cosine_pos = []
                 eval_cosine_neg = []
                 eval_cosine_sep = []
@@ -192,5 +195,8 @@ class Trainer:
                     self.save(pjoin(self.opt.model_dir, 'best_eval_cosine.tar'), epoch, it)
                     best_eval_cosine = np.mean(eval_cosine_pos)
                 
+                if np.mean(eval_r1) > best_R1:
+                    self.save(pjoin(self.opt.model_dir, 'best_R1.tar'), epoch, it)
+                    best_R1 = np.mean(eval_r1)
                 
                 

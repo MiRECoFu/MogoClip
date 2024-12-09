@@ -18,7 +18,7 @@ class BaseOptions():
 
         self.parser.add_argument('--embed_dim', type=int, default=768, help='Dimension of transformer latent.')
         self.parser.add_argument('--heads', type=int, default=16, help='Number of heads.')
-        self.parser.add_argument('--layers', type=int, default=14, help='Number of attention layers.')
+        self.parser.add_argument('--layers', type=int, default=16, help='Number of attention layers.')
         self.parser.add_argument('--width', type=int, default=1024, help='FF_Size')
         self.parser.add_argument('--dropout', type=float, default=0.1, help='Dropout ratio in transformer')
 
